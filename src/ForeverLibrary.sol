@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // External renderer interface
 interface IExternalRenderer {
@@ -36,6 +36,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
 
     // State mappings
     mapping(uint256 => MintData) private _mintData;
+mapping(uint256 => uint256) public mintTimestamp;
 
     // External metadata renderer settings per token
     mapping(uint256 => bool) public usesExternalRenderer;
@@ -70,7 +71,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         _collectionDescription = "A fully immutable, non-upgradeable NFT contract with open minting and permanent metadata.";
         
         // Set collection image (SVG logo)
-        _collectionImage = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMzY1LjMiIGhlaWdodD0iMTM2NS4zIiB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0Ij48cGF0aCBkPSJNMCAwaDEwMjR2MTAyNEgwVjBaIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTY0OSAyMzNhNjMgNjMgMCAwIDEgNTEgNTFjMiAxMS0yIDIyLTExIDI5LTQgNC0xMiA0LTE3IDEtMy0yLTUtNi00LTEwIDAtNSAyLTkgNC0xNHMyLTExIDAtMTZjLTItOS03LTE4LTE0LTI0LTYtNS0xMy05LTIwLTktMTIgMC0yMyAzLTMzIDktMTEgNy0yMCAxOS0yNSAzMS0xMCAyMi0xNCA0NS0xNiA2OWwtMTQgMTI2LTEgMTMgMzQtMjMgMTAtOWM1LTkgNy0yMCA0LTMxLTEtNi0zLTEzIDEtMTkgMy01IDktNiAxNC00IDUgMSA4IDUgMTAgOSA1IDkgNCAyMi0xIDMxLTMgNy05IDEyLTE1IDE2LTE2IDEzLTMyIDI1LTQ5IDM2bC05IDYtMSA2LTggNzZjLTIgMjYtNiA1MS0xNCA3Ni04IDI4LTIxIDUzLTM5IDc1bC0yMCAyM2MtMTUgMTUtMzMgMjgtNTQgMzRhNjcgNjcgMCAwIDEtNzYtMjggODAgODAgMCAwIDEtMTEtNTBjMS0xNiAzLTMxIDgtNDYgNC0xMyAxMS0yNCAxOS0zNSAxMS0xNSAyNS0yOCAzOS00MGwzMy0yMiA0OS0zMWMxLTEgNC0yIDQtNGwyLTE0IDE5LTE4MCAzLTIxYzItMTAgNi0yMCAxMS0yOSAxMS0xOCAyOC0zMSA0Ni00MmExMzYgMTM2IDAgMCAxIDkxLTE2WiIvPjxwYXRoIGQ9Im00NzUgNTQ5LTEgMTgtMTggMTYzYy0xIDctMSAxNC01IDIwLTUgMTAtMTUgMTgtMjUgMjMtOSA1LTE5IDctMjkgNS00IDAtMTAtMi0xMS03LTItMyAwLTggMC0xMmwxNS0xMzggMy0xOGMyLTUgNS05IDktMTMgNS01IDExLTggMTctMTJsMjktMTkgMTYtMTBaIi8+PC9zdmc+";
+        _collectionImage = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMzY1LjMiIGhlaWdodD0iMTM2NS4zIiB2aWV3Qm94PSIwIDAgMTAyNCAxMDI0Ij48cGF0aCBkPSJNMCAwaDEwMjR2MTAyNEgwVjBaIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTY0OSAyMzNhNjMgNjMgMCAwIDEgNTEgNTFjMiAxMS0yIDIyLTExIDI5LTQgNC0xMiA0LTE3IDEtMy0yLTUtNi00LTEwIDAtNSAyLTkgNC0xNHMyLTExIDAtMTZjLTItOS03LTE4LTE0LTI0LTYtNS0xMy05LTIwLTktMTIgMC0yMyAzLTMzIDktMTEgNy0yMCAxOS0yNSAzMS0xMCAyMi0xNCA0NS0xNiA2OWwtMTQgMTI2LTEgMTMgMzQtMjMgMTAtOWM1LTkgNy0yMCA0LTMxLTEtNi0zLTEzIDEtMTkgMy01IDktNiAxNC00IDUgMSA4IDUgMTAgOSA1IDkgNCAyMi0xIDMxLTMgNy05IDEyLTE1IDE2LTE2IDEzLTMyIDI1LTQ5IDM2bC05IDYtMSA2LTggNzZjLTIgMjYtNiA1MS0xNCA3Ni04IDI4LTIxIDUzLTM5IDc1bC0yMCAyM2MtMTUgMTUtMzMgMjgtNTQgMzRhNjcgNjcgMCAwIDEtNzYtMjggODAgODAgMCAwIDEtMTEtNTBjMS0xNiAzLTMxIDgtNDYgNC0xMyAxMS0yNCAxOS0zNSAxMS0xNSAyNS0yOCAzOS00MGwzMy0yMiA0OS0zMWMxLTEgNC0yIDQtNGwyLTE0IDE5LTE4MCAzLTIxYzItMTAgNi0yMCAxMS0yOSAxMS0xOCAyOC0zMSA0Ni00MmExMzYgMTM2IDAgMCAxIDkxLTE2WiIvPjxwYXRoIGQ9Im00NzUgNTQ5LTEgMTgtMTggMTYzYy0xIDctMSAxNC01IDIwLTUgMTAtMTUgMTgtMjUgMjMtOSA1LTE5IDctMjkgNS00IDAtMTAtMi0xMS03LTItMyAwLTggMC0xMmwxNS0xMzggMy0xOGMyLTUgNS09IDktMTMgNS01IDExLTggMTctMTBsMjktMTkgMTYtMTBaIi8+PC9zdmc+";
     }
 
     modifier onlyTokenCreator(uint256 tokenId) {
@@ -99,9 +100,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             metadataHash: keccak256(bytes(finalTokenURI)),
             tokenURI: finalTokenURI
         });
-
-        mintTimestamp[tokenId] = block.timestamp; // Store the minting time
-
+        
         // Mint NFT
         _safeMint(msg.sender, tokenId);
 
