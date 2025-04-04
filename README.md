@@ -16,7 +16,7 @@ Forever Library NFT Minting Contract is a robust, secure, and immutable ERC-721 
 
 ## Smart Contract Overview
 
-The Forever Library contract provides a secure and transparent way to mint NFTs with the following guarantees:
+The Forever Library NFT Minting Contract provides a secure and transparent way to mint NFTs with the following guarantees:
 
 1. **Open Minting**: Any address can mint NFTs by providing a token URI
 2. **Creator Control**: Only the creator of a token can modify its metadata within the 24-hour window
