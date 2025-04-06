@@ -1,18 +1,54 @@
-# Forever Library NFT Minting Contract
+# Forever Library Smart Contract
 
-Forever Library NFT Minting Contract is a robust, secure, and immutable ERC-721 NFT contract built with Solidity and OpenZeppelin.
+A fully immutable, non-upgradeable NFT contract with open minting and permanent metadata.
+
+## Deployment to Sepolia
+
+1. Install dependencies:
+
+```bash
+forge install
+```
+
+2. Set up environment variables:
+
+- Copy `.env.example` to `.env`
+- Fill in your private key, Sepolia RPC URL, and Etherscan API key
+
+3. Build the contract:
+
+```bash
+forge build
+```
+
+4. Deploy to Sepolia:
+
+```bash
+forge script script/ForeverLibrary.s.sol:ForeverLibrary --rpc-url sepolia --broadcast --verify -vvvv
+```
+
+5. Verify the contract on Etherscan:
+
+```bash
+forge verify-contract --chain-id 11155111 --constructor-args $(cast abi-encode "constructor()" "") --watch <DEPLOYED_ADDRESS> src/ForeverLibrary.sol:ForeverLibrary
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+forge test
+```
 
 ## Features
 
-- **ERC-721 Compliant**: Built on the widely-adopted ERC-721 standard for NFTs
-- **Immutable Contract**: No owner privileges, ensuring fair and decentralized operation
-- **Open Minting**: Anyone can mint NFTs without restrictions
-- **Metadata Security**:
-  - 24-hour window to update metadata after minting
-  - After 24 hours, metadata becomes permanently locked
-- **External Renderer Support**: Compatible with generative art systems through an external renderer interface
-- **Non-Upgradeable**: Contract logic is fixed at deployment, providing certainty for collectors
-- **Reentrancy Protection**: Implements OpenZeppelin's ReentrancyGuard for enhanced security
+- ERC-721 compliant
+- Immutable contract (not ownable)
+- Openly mintable by public
+- Immutable metadata after 24 hours
+- External renderer support for generative art
+- 24-hour time lock before metadata is locked
 
 ## Smart Contract Overview
 
@@ -38,44 +74,6 @@ Foundry consists of:
 ## Documentation
 
 https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
 
 ### Cast
 
