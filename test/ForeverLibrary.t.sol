@@ -59,7 +59,7 @@ contract ForeverLibraryTest is Test {
         foreverLibrary.mint(SAMPLE_URI);
 
         vm.prank(user2);
-        vm.expectRevert("Only token creator can modify");
+        vm.expectRevert(ForeverLibrary.NotTokenCreator.selector);
         foreverLibrary.setTokenURI(1, UPDATED_URI);
     }
 
@@ -70,7 +70,7 @@ contract ForeverLibraryTest is Test {
         skip(25 hours);
 
         vm.prank(user1);
-        vm.expectRevert("Metadata locked after 24 hours");
+        vm.expectRevert(ForeverLibrary.MetadataLocked.selector);
         foreverLibrary.setTokenURI(1, UPDATED_URI);
     }
 
@@ -98,11 +98,11 @@ contract ForeverLibraryTest is Test {
         MockExternalRenderer mockRenderer = new MockExternalRenderer();
 
         vm.prank(user1);
-        vm.expectRevert("Metadata locked after 24 hours");
+        vm.expectRevert(ForeverLibrary.MetadataLocked.selector);
         foreverLibrary.setExternalRenderer(1, address(mockRenderer));
 
         vm.prank(user1);
-        vm.expectRevert("Metadata locked after 24 hours");
+        vm.expectRevert(ForeverLibrary.MetadataLocked.selector);
         foreverLibrary.toggleExternalRenderer(1, true);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
@@ -114,7 +114,7 @@ contract ForeverLibraryTest is Test {
         foreverLibrary.mint(SAMPLE_URI);
 
         vm.prank(user1);
-        vm.expectRevert("Invalid renderer address");
+        vm.expectRevert(ForeverLibrary.InvalidRendererAddress.selector);
         foreverLibrary.setExternalRenderer(1, address(0));
     }
 
@@ -124,6 +124,16 @@ contract ForeverLibraryTest is Test {
 
         ForeverLibrary.MintData memory data = foreverLibrary.getMintData(1);
         assertEq(data.metadataHash, keccak256(bytes(SAMPLE_URI)));
+    }
+
+    function test_RevertWhen_NonExistentToken() public {
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 999));
+        foreverLibrary.tokenURI(999);
+    }
+
+    function test_RevertWhen_TokenNotFound() public {
+        vm.expectRevert(ForeverLibrary.TokenNotFound.selector);
+        foreverLibrary.getMintData(999);
     }
 
     function test_RevertWhen_EtherSent() public {
