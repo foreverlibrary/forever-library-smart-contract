@@ -124,6 +124,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
 
         usesExternalRenderer[tokenId] = enabled;
     }
+
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         ownerOf(tokenId); // This will revert with ERC721NonexistentToken if token doesn't exist
 
