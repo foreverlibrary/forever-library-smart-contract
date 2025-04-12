@@ -12,6 +12,9 @@ contract ForeverLibraryTest is Test {
 
     string constant SAMPLE_URI = "ipfs://QmXsMLpKjznF3z1KwVVWtyNUW1j3pX8QMeRzQYQwbBhVEu";
     string constant UPDATED_URI = "ipfs://QmNewURIHash";
+    string constant ARTIST_NAME = "Test Artist";
+    string constant TITLE = "Test Title";
+    string constant MEDIA_TYPE = "Digital Art";
 
     function setUp() public {
         deployer = address(this);
@@ -26,37 +29,37 @@ contract ForeverLibraryTest is Test {
 
     function test_Mint() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
-        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
+        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
     }
 
     function test_MultipleTokens() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
         vm.prank(user2);
-        foreverLibrary.mint(UPDATED_URI);
+        foreverLibrary.mint(UPDATED_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
         assertEq(foreverLibrary.ownerOf(2), user2);
-        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
-        assertEq(foreverLibrary.tokenURI(2), UPDATED_URI);
+        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
+        assertStringStartsWith(foreverLibrary.tokenURI(2), "data:application/json;base64,");
     }
 
     function test_SetTokenURI() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         vm.prank(user1);
         foreverLibrary.setTokenURI(1, UPDATED_URI);
 
-        assertEq(foreverLibrary.tokenURI(1), UPDATED_URI);
+        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
     }
 
     function test_RevertWhen_NonCreatorUpdatesURI() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         vm.prank(user2);
         vm.expectRevert(ForeverLibrary.NotTokenCreator.selector);
@@ -65,7 +68,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_MetadataLocked() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         skip(25 hours);
 
@@ -78,7 +81,7 @@ contract ForeverLibraryTest is Test {
         MockExternalRenderer mockRenderer = new MockExternalRenderer();
 
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         vm.prank(user1);
         foreverLibrary.setExternalRenderer(1, address(mockRenderer));
@@ -91,7 +94,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_ExternalRendererLocked() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         skip(25 hours);
 
@@ -106,12 +109,12 @@ contract ForeverLibraryTest is Test {
         foreverLibrary.toggleExternalRenderer(1, true);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
-        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
+        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
     }
 
     function test_RevertWhen_InvalidRendererAddress() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.InvalidRendererAddress.selector);
@@ -120,7 +123,7 @@ contract ForeverLibraryTest is Test {
 
     function test_MetadataHash() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         ForeverLibrary.MintData memory data = foreverLibrary.getMintData(1);
         assertEq(data.metadataHash, keccak256(bytes(SAMPLE_URI)));
@@ -152,7 +155,7 @@ contract ForeverLibraryTest is Test {
     function test_RevertWhen_EmptyURI() public {
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.EmptyURI.selector);
-        foreverLibrary.mint("");
+        foreverLibrary.mint("", ARTIST_NAME, TITLE, MEDIA_TYPE);
     }
 
     function test_RevertWhen_URITooLong() public {
@@ -160,7 +163,7 @@ contract ForeverLibraryTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.URITooLong.selector);
-        foreverLibrary.mint(longURI);
+        foreverLibrary.mint(longURI, ARTIST_NAME, TITLE, MEDIA_TYPE);
     }
 
     function _createLongString(uint256 length) internal pure returns (string memory) {
@@ -183,7 +186,6 @@ contract ForeverLibraryTest is Test {
     }
 }
 
-// Mock external renderer for testing
 contract MockExternalRenderer is IExternalRenderer {
     function tokenURI(uint256 tokenId) external pure override returns (string memory) {
         return string(abi.encodePacked("MOCK_EXTERNAL_URI_", uint2str(tokenId)));
