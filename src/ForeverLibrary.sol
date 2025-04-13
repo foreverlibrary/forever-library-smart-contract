@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 interface IExternalRenderer {
     function tokenURI(uint256 tokenId) external view returns (string memory);
@@ -42,7 +43,10 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         string tokenURI,
         bytes32 metadataHash,
         uint256 timestamp,
-        uint256 blockNumber
+        uint256 blockNumber,
+        string artistName,
+        string title,
+        string mediaType
     );
 
     error EmptyURI();
@@ -52,6 +56,9 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
     error InvalidRendererAddress();
     error MetadataLocked();
     error TokenNotFound();
+    error EmptyArtistName();
+    error EmptyTitle();
+    error EmptyMediaType();
 
     constructor() ERC721("Forever Library", "FL") {
         DEPLOYER = msg.sender;
@@ -71,9 +78,17 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         _;
     }
 
-    function mint(string calldata finalTokenURI) external nonReentrant {
+    function mint(
+        string calldata finalTokenURI,
+        string calldata artistName,
+        string calldata title,
+        string calldata mediaType
+    ) external nonReentrant {
         if (bytes(finalTokenURI).length == 0) revert EmptyURI();
         if (bytes(finalTokenURI).length > 2048) revert URITooLong();
+        if (bytes(artistName).length == 0) revert EmptyArtistName();
+        if (bytes(title).length == 0) revert EmptyTitle();
+        if (bytes(mediaType).length == 0) revert EmptyMediaType();
 
         uint256 tokenId = _currentTokenId;
         unchecked {
@@ -97,7 +112,10 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             finalTokenURI,
             keccak256(bytes(finalTokenURI)),
             block.timestamp,
-            block.number
+            block.number,
+            artistName,
+            title,
+            mediaType
         );
     }
 
