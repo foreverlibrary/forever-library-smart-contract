@@ -32,7 +32,7 @@ contract ForeverLibraryTest is Test {
         foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
-        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
+        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
     }
 
     function test_MultipleTokens() public {
@@ -43,8 +43,8 @@ contract ForeverLibraryTest is Test {
 
         assertEq(foreverLibrary.ownerOf(1), user1);
         assertEq(foreverLibrary.ownerOf(2), user2);
-        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
-        assertStringStartsWith(foreverLibrary.tokenURI(2), "data:application/json;base64,");
+        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
+        assertEq(foreverLibrary.tokenURI(2), UPDATED_URI);
     }
 
     function test_SetTokenURI() public {
@@ -54,7 +54,7 @@ contract ForeverLibraryTest is Test {
         vm.prank(user1);
         foreverLibrary.setTokenURI(1, UPDATED_URI);
 
-        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
+        assertEq(foreverLibrary.tokenURI(1), UPDATED_URI);
     }
 
     function test_RevertWhen_NonCreatorUpdatesURI() public {
@@ -109,7 +109,7 @@ contract ForeverLibraryTest is Test {
         foreverLibrary.toggleExternalRenderer(1, true);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
-        assertStringStartsWith(foreverLibrary.tokenURI(1), "data:application/json;base64,");
+        assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
     }
 
     function test_RevertWhen_InvalidRendererAddress() public {

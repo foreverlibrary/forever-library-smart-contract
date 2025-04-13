@@ -28,9 +28,6 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         uint64 blockNumber; // 8 bytes
         bytes32 metadataHash; // 32 bytes
         string tokenURI; // dynamic
-        string artistName; // dynamic
-        string title; // dynamic
-        string mediaType; // dynamic
     }
 
     mapping(uint256 => MintData) private _mintData;
@@ -103,10 +100,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             timestamp: uint64(block.timestamp),
             blockNumber: uint64(block.number),
             metadataHash: keccak256(bytes(finalTokenURI)),
-            tokenURI: finalTokenURI,
-            artistName: artistName,
-            title: title,
-            mediaType: mediaType
+            tokenURI: finalTokenURI
         });
 
         _safeMint(msg.sender, tokenId);
@@ -149,49 +143,6 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         usesExternalRenderer[tokenId] = enabled;
     }
 
-    // Split the JSON generation into helper functions to reduce stack depth
-    function _generateAttributesJSON(MintData memory data) private pure returns (string memory) {
-        return string(
-            abi.encodePacked(
-                '{"trait_type":"Artist","value":"',
-                data.artistName,
-                '"},{"trait_type":"Title","value":"',
-                data.title,
-                '"},{"trait_type":"Media Type","value":"',
-                data.mediaType,
-                '"},{"trait_type":"Creator","value":"',
-                Strings.toHexString(uint160(data.creator), 20),
-                '"}'
-            )
-        );
-    }
-
-    function _generateMetadataJSON(MintData memory data) private view returns (string memory) {
-        string memory attributes = _generateAttributesJSON(data);
-
-        return string(
-            abi.encodePacked(
-                '{"name":"',
-                data.title,
-                '","description":"',
-                _collectionDescription,
-                '","image":"',
-                data.tokenURI,
-                '","artist":"',
-                data.artistName,
-                '","title":"',
-                data.title,
-                '","media_type":"',
-                data.mediaType,
-                '","creator":"',
-                Strings.toHexString(uint160(data.creator), 20),
-                '","attributes":[',
-                attributes,
-                "]}"
-            )
-        );
-    }
-
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         ownerOf(tokenId); // This will revert with ERC721NonexistentToken if token doesn't exist
 
@@ -199,10 +150,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             return IExternalRenderer(externalRendererAddresses[tokenId]).tokenURI(tokenId);
         }
 
-        MintData memory data = _mintData[tokenId];
-        string memory json = _generateMetadataJSON(data);
-
-        return string(abi.encodePacked("data:application/json;base64,", Base64.encode(bytes(json))));
+        return _mintData[tokenId].tokenURI;
     }
 
     function contractURI() public view returns (string memory) {
