@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 
 interface IExternalRenderer {
     function tokenURI(uint256 tokenId) external view returns (string memory);
@@ -12,7 +13,7 @@ interface IExternalRenderer {
 
 /// @title Forever Library
 /// @notice A fully immutable, non-upgradeable NFT contract with open minting and permanent metadata.
-contract ForeverLibrary is ERC721, ReentrancyGuard {
+contract ForeverLibrary is ERC721, ReentrancyGuard, ERC2981 {
     string public constant VERSION = "1.0.0";
     address public immutable DEPLOYER;
 
@@ -49,6 +50,8 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         string mediaType
     );
 
+    event RoyaltyUpdated(uint256 indexed tokenId, uint96 royaltyPercentage);
+
     error EmptyURI();
     error URITooLong();
     error EtherNotAccepted();
@@ -59,6 +62,7 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
     error EmptyArtistName();
     error EmptyTitle();
     error EmptyMediaType();
+    error InvalidRoyaltyPercentage();
 
     constructor() ERC721("Forever Library", "FL") {
         DEPLOYER = msg.sender;
@@ -82,13 +86,15 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
         string calldata finalTokenURI,
         string calldata artistName,
         string calldata title,
-        string calldata mediaType
+        string calldata mediaType,
+        uint96 royaltyPercentage
     ) external nonReentrant {
         if (bytes(finalTokenURI).length == 0) revert EmptyURI();
         if (bytes(finalTokenURI).length > 2048) revert URITooLong();
         if (bytes(artistName).length == 0) revert EmptyArtistName();
         if (bytes(title).length == 0) revert EmptyTitle();
         if (bytes(mediaType).length == 0) revert EmptyMediaType();
+        if (royaltyPercentage > 10000) revert InvalidRoyaltyPercentage(); // Max 100%
 
         uint256 tokenId = _currentTokenId;
         unchecked {
@@ -102,6 +108,8 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             metadataHash: keccak256(bytes(finalTokenURI)),
             tokenURI: finalTokenURI
         });
+
+        _setTokenRoyalty(tokenId, msg.sender, royaltyPercentage);
 
         _safeMint(msg.sender, tokenId);
 
@@ -117,6 +125,13 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
             title,
             mediaType
         );
+    }
+
+    function updateTokenRoyalty(uint256 tokenId, uint96 royaltyPercentage) external onlyTokenCreator(tokenId) {
+        if (royaltyPercentage > 10000) revert InvalidRoyaltyPercentage(); // Max 100%
+
+        _setTokenRoyalty(tokenId, _mintData[tokenId].creator, royaltyPercentage);
+        emit RoyaltyUpdated(tokenId, royaltyPercentage);
     }
 
     function getMintData(uint256 _tokenId) public view returns (MintData memory) {
@@ -172,6 +187,19 @@ contract ForeverLibrary is ERC721, ReentrancyGuard {
                 )
             )
         );
+    }
+
+    // The following functions are overrides required by Solidity
+    function _update(address to, uint256 tokenId, address auth) internal override(ERC721) returns (address) {
+        return super._update(to, tokenId, auth);
+    }
+
+    function _increaseBalance(address account, uint128 amount) internal override(ERC721) {
+        super._increaseBalance(account, amount);
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 
     receive() external payable {

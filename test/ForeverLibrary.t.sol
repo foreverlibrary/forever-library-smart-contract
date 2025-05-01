@@ -15,6 +15,8 @@ contract ForeverLibraryTest is Test {
     string constant ARTIST_NAME = "Test Artist";
     string constant TITLE = "Test Title";
     string constant MEDIA_TYPE = "Digital Art";
+    uint96 constant DEFAULT_ROYALTY = 1000; // 10%
+    uint256 constant TEST_SALE_PRICE = 10000;
 
     function setUp() public {
         deployer = address(this);
@@ -29,7 +31,7 @@ contract ForeverLibraryTest is Test {
 
     function test_Mint() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
         assertEq(foreverLibrary.tokenURI(1), SAMPLE_URI);
@@ -37,9 +39,9 @@ contract ForeverLibraryTest is Test {
 
     function test_MultipleTokens() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
         vm.prank(user2);
-        foreverLibrary.mint(UPDATED_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(UPDATED_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         assertEq(foreverLibrary.ownerOf(1), user1);
         assertEq(foreverLibrary.ownerOf(2), user2);
@@ -49,7 +51,7 @@ contract ForeverLibraryTest is Test {
 
     function test_SetTokenURI() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         vm.prank(user1);
         foreverLibrary.setTokenURI(1, UPDATED_URI);
@@ -59,7 +61,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_NonCreatorUpdatesURI() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         vm.prank(user2);
         vm.expectRevert(ForeverLibrary.NotTokenCreator.selector);
@@ -68,7 +70,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_MetadataLocked() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         skip(25 hours);
 
@@ -81,7 +83,7 @@ contract ForeverLibraryTest is Test {
         MockExternalRenderer mockRenderer = new MockExternalRenderer();
 
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         vm.prank(user1);
         foreverLibrary.setExternalRenderer(1, address(mockRenderer));
@@ -94,7 +96,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_ExternalRendererLocked() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         skip(25 hours);
 
@@ -114,7 +116,7 @@ contract ForeverLibraryTest is Test {
 
     function test_RevertWhen_InvalidRendererAddress() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.InvalidRendererAddress.selector);
@@ -123,7 +125,7 @@ contract ForeverLibraryTest is Test {
 
     function test_MetadataHash() public {
         vm.prank(user1);
-        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
 
         ForeverLibrary.MintData memory data = foreverLibrary.getMintData(1);
         assertEq(data.metadataHash, keccak256(bytes(SAMPLE_URI)));
@@ -155,7 +157,7 @@ contract ForeverLibraryTest is Test {
     function test_RevertWhen_EmptyURI() public {
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.EmptyURI.selector);
-        foreverLibrary.mint("", ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint("", ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
     }
 
     function test_RevertWhen_URITooLong() public {
@@ -163,7 +165,53 @@ contract ForeverLibraryTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(ForeverLibrary.URITooLong.selector);
-        foreverLibrary.mint(longURI, ARTIST_NAME, TITLE, MEDIA_TYPE);
+        foreverLibrary.mint(longURI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+    }
+
+    function test_SetTokenRoyalty() public {
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+
+        uint96 newRoyalty = 2000; // 20%
+        vm.prank(user1);
+        foreverLibrary.updateTokenRoyalty(1, newRoyalty);
+
+        (address receiver, uint256 royaltyAmount) = foreverLibrary.royaltyInfo(1, TEST_SALE_PRICE);
+        assertEq(receiver, user1);
+        assertEq(royaltyAmount, 2000); // 20% of 10000
+    }
+
+    function test_RevertWhen_NonCreatorUpdatesRoyalty() public {
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+
+        vm.prank(user2);
+        vm.expectRevert(ForeverLibrary.NotTokenCreator.selector);
+        foreverLibrary.updateTokenRoyalty(1, 2000);
+    }
+
+    function test_RevertWhen_InvalidRoyaltyPercentage() public {
+        vm.prank(user1);
+        vm.expectRevert(ForeverLibrary.InvalidRoyaltyPercentage.selector);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, 10001);
+    }
+
+    function test_RevertWhen_InvalidRoyaltyPercentageUpdate() public {
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+
+        vm.prank(user1);
+        vm.expectRevert(ForeverLibrary.InvalidRoyaltyPercentage.selector);
+        foreverLibrary.updateTokenRoyalty(1, 10001);
+    }
+
+    function test_RoyaltyInfo() public {
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+
+        (address receiver, uint256 royaltyAmount) = foreverLibrary.royaltyInfo(1, TEST_SALE_PRICE);
+        assertEq(receiver, user1);
+        assertEq(royaltyAmount, 1000);
     }
 
     function _createLongString(uint256 length) internal pure returns (string memory) {
