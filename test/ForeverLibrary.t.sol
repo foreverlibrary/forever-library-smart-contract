@@ -214,6 +214,66 @@ contract ForeverLibraryTest is Test {
         assertEq(royaltyAmount, 1000);
     }
 
+    function test_TotalSupply() public {
+        assertEq(foreverLibrary.totalSupply(), 0);
+
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        assertEq(foreverLibrary.totalSupply(), 1);
+
+        vm.prank(user2);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        assertEq(foreverLibrary.totalSupply(), 2);
+    }
+
+    function test_TokenByIndex() public {
+        vm.prank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        vm.prank(user2);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+
+        assertEq(foreverLibrary.tokenByIndex(0), 1);
+        assertEq(foreverLibrary.tokenByIndex(1), 2);
+
+        vm.expectRevert("ERC721Enumerable: global index out of bounds");
+        foreverLibrary.tokenByIndex(2);
+    }
+
+    function test_TokenOfOwnerByIndex() public {
+        // Mint tokens for user1
+        vm.startPrank(user1);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        vm.stopPrank();
+
+        // Mint tokens for user2
+        vm.startPrank(user2);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        foreverLibrary.mint(SAMPLE_URI, ARTIST_NAME, TITLE, MEDIA_TYPE, DEFAULT_ROYALTY);
+        vm.stopPrank();
+
+        assertEq(foreverLibrary.tokenOfOwnerByIndex(user1, 0), 1);
+        assertEq(foreverLibrary.tokenOfOwnerByIndex(user1, 1), 2);
+        assertEq(foreverLibrary.tokenOfOwnerByIndex(user1, 2), 3);
+
+        assertEq(foreverLibrary.tokenOfOwnerByIndex(user2, 0), 4);
+        assertEq(foreverLibrary.tokenOfOwnerByIndex(user2, 1), 5);
+
+        vm.expectRevert("ERC721Enumerable: owner index out of bounds");
+        foreverLibrary.tokenOfOwnerByIndex(user1, 3);
+
+        vm.expectRevert("ERC721Enumerable: owner index out of bounds");
+        foreverLibrary.tokenOfOwnerByIndex(user2, 2);
+    }
+
+    function test_SupportsInterface() public view {
+        assertTrue(foreverLibrary.supportsInterface(type(IERC721Enumerable).interfaceId));
+        assertTrue(foreverLibrary.supportsInterface(type(IERC721).interfaceId));
+        assertTrue(foreverLibrary.supportsInterface(type(IERC2981).interfaceId));
+        assertFalse(foreverLibrary.supportsInterface(0x12345678));
+    }
+
     function _createLongString(uint256 length) internal pure returns (string memory) {
         bytes memory result = new bytes(length);
         for (uint256 i = 0; i < length; i++) {

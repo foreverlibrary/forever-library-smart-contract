@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 interface IExternalRenderer {
     function tokenURI(uint256 tokenId) external view returns (string memory);
@@ -13,7 +15,7 @@ interface IExternalRenderer {
 
 /// @title Forever Library
 /// @notice A fully immutable, non-upgradeable NFT contract with open minting and permanent metadata.
-contract ForeverLibrary is ERC721, ReentrancyGuard, ERC2981 {
+contract ForeverLibrary is ERC721, ReentrancyGuard, ERC2981, IERC721Enumerable {
     string public constant VERSION = "1.0.0";
     address public immutable DEPLOYER;
 
@@ -145,6 +147,31 @@ contract ForeverLibrary is ERC721, ReentrancyGuard, ERC2981 {
         _mintData[tokenId].tokenURI = _uri;
     }
 
+    function totalSupply() public view override returns (uint256) {
+        if (_currentTokenId == 0) return 0;
+        return _currentTokenId - 1;
+    }
+
+    function tokenByIndex(uint256 index) public view override returns (uint256) {
+        if (index >= totalSupply()) revert("ERC721Enumerable: global index out of bounds");
+        return index + 1;
+    }
+
+    function tokenOfOwnerByIndex(address owner, uint256 index) external view override returns (uint256) {
+        if (index >= balanceOf(owner)) revert("ERC721Enumerable: owner index out of bounds");
+
+        uint256 currentIndex = 0;
+        for (uint256 i = 1; i <= totalSupply(); i++) {
+            if (ownerOf(i) == owner) {
+                if (currentIndex == index) {
+                    return i;
+                }
+                currentIndex++;
+            }
+        }
+        revert("ERC721Enumerable: owner index out of bounds");
+    }
+
     function setExternalRenderer(uint256 tokenId, address renderer) external onlyTokenCreator(tokenId) {
         if (renderer == address(0)) revert InvalidRendererAddress();
         if (block.timestamp > _mintData[tokenId].timestamp + 24 hours) revert MetadataLocked();
@@ -198,8 +225,8 @@ contract ForeverLibrary is ERC721, ReentrancyGuard, ERC2981 {
         super._increaseBalance(account, amount);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC2981, IERC165) returns (bool) {
+        return interfaceId == type(IERC721Enumerable).interfaceId || super.supportsInterface(interfaceId);
     }
 
     receive() external payable {
